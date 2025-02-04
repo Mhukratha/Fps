@@ -21,12 +21,19 @@ public class GameController : MonoBehaviour
     private int zombiesPerWave;     // จำนวนซอมบี้ที่ spawn ในแต่ละเวฟ
     private bool gameEnded = false;
 
+    // public GameObject restartButton;
+    public GameObject menuButton;
+    public GameObject quitButton;
+
     private void Start()
     {
         winText.gameObject.SetActive(false); // ซ่อนข้อความชนะตอนเริ่มเกม
         waveText.gameObject.SetActive(true);  // แสดง waveText ตอนเริ่มเกม
         zombiesPerWave = 5;  // จำนวนซอมบี้ในเวฟแรก
         StartCoroutine(SpawnZombies()); // เริ่มการ spawn ซอมบี้
+
+        menuButton.gameObject.SetActive(false); 
+        quitButton.gameObject.SetActive(false); 
     }
 
     private void Update()
@@ -49,6 +56,9 @@ public class GameController : MonoBehaviour
             timerText.gameObject.SetActive(false); // ซ่อนตัวจับเวลา
             winText.gameObject.SetActive(true);    // แสดงข้อความชนะ
             Time.timeScale = 0; // หยุดเกม
+
+            quitButton.gameObject.SetActive(true); 
+            menuButton.gameObject.SetActive(true); 
         }
     }
 
@@ -106,6 +116,9 @@ public class GameController : MonoBehaviour
         }
     }
 }
+
+
+
 
 
 

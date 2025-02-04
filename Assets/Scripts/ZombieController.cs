@@ -11,7 +11,8 @@ public class ZombieController : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private Transform player;
-    
+
+    public AudioSource bite;  
     private GameController gameController; // เพิ่มตัวแปรอ้างอิงไปยัง GameController
     private int currentHealth;
     private bool isAttacking = false;
@@ -39,6 +40,11 @@ public class ZombieController : MonoBehaviour
         {
             isAttacking = true;
             animator.SetTrigger("Attack");
+            
+            if (bite != null)
+        {
+            bite.Play(); 
+        }
         }
         else if (distanceToPlayer > attackRange)
         {
@@ -89,6 +95,7 @@ public class ZombieController : MonoBehaviour
             {
                 playerController.TakeDamage(10);
             }
+             
         }
     }
 
