@@ -24,6 +24,8 @@ public class GameController : MonoBehaviour
     // public GameObject restartButton;
     public GameObject menuButton;
     public GameObject quitButton;
+    public GameObject restartButton;
+
 
     private void Start()
     {
@@ -33,7 +35,9 @@ public class GameController : MonoBehaviour
         StartCoroutine(SpawnZombies()); // เริ่มการ spawn ซอมบี้
 
         menuButton.gameObject.SetActive(false); 
-        quitButton.gameObject.SetActive(false); 
+        quitButton.gameObject.SetActive(false);
+        restartButton.gameObject.SetActive(false); 
+ 
     }
 
     private void Update()
@@ -59,6 +63,7 @@ public class GameController : MonoBehaviour
 
             quitButton.gameObject.SetActive(true); 
             menuButton.gameObject.SetActive(true); 
+            restartButton.gameObject.SetActive(true); 
         }
     }
 

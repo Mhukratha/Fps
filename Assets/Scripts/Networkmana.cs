@@ -1,36 +1,32 @@
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
+using Unity.Netcode.Transports.UTP;
 using UnityEngine.SceneManagement; 
 
 public class NetworkManagerScript : MonoBehaviour
 {
-     private void Start()
+      void Start()
     {
-        if (!NetworkManager.Singleton.IsServer && !NetworkManager.Singleton.IsClient)
+        if (SystemInfo.deviceName.Contains("Player1"))
         {
-            StartHost(); 
+            StartServer();
+        }
+        else
+        {
             StartClient();
         }
-        
-    }
-    public void StartHost()
-    {
-        NetworkManager.Singleton.StartHost();
-        Debug.Log("Host started");
     }
 
-    // Cli
-    public void StartClient()
+    private void StartServer()
     {
-        NetworkManager.Singleton.StartClient();
-        Debug.Log("Client started");
-    }
-
-    //Serv
-    public void StartServer()
-    {
+        Debug.Log("Starting Server...");
         NetworkManager.Singleton.StartServer();
-        Debug.Log("Server started");
+    }
+
+    private void StartClient()
+    {
+        Debug.Log("Starting Client...");
+        NetworkManager.Singleton.StartClient();
     }
 }
