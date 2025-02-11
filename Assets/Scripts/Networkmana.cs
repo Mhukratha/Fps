@@ -12,10 +12,6 @@ public class NetworkManagerScript : MonoBehaviour
         {
             StartServer();
         }
-        else
-        {
-            StartClient();
-        }
     }
 
     private void StartServer()
@@ -24,9 +20,4 @@ public class NetworkManagerScript : MonoBehaviour
         NetworkManager.Singleton.StartServer();
     }
 
-    private void StartClient()
-    {
-        Debug.Log("Starting Client...");
-        NetworkManager.Singleton.StartClient();
-    }
 }
