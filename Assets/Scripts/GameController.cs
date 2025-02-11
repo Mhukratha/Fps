@@ -37,7 +37,6 @@ public class GameController : MonoBehaviour
         menuButton.gameObject.SetActive(false); 
         quitButton.gameObject.SetActive(false);
         restartButton.gameObject.SetActive(false); 
- 
     }
 
     private void Update()
