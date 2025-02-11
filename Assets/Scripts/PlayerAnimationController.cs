@@ -22,11 +22,17 @@ public class PlayerAnimationController : MonoBehaviour
     [Header("UI Elements")]
     [SerializeField] private Text gameOverText;
 
+    public AudioSource gunshot;  
     private Animator animator;
     private Rigidbody rb;
     private int currentHealth;
     private float nextFire = 0.0f;
     private bool isDead = false;
+
+    public GameObject restartButton;
+    public GameObject menuButton;
+    public GameObject quitButton;
+
 
     private void Start()
     {
@@ -36,6 +42,10 @@ public class PlayerAnimationController : MonoBehaviour
         currentHealth = health;
         if (flashMuzzle != null) flashMuzzle.SetActive(false);
         if (gameOverText != null) gameOverText.gameObject.SetActive(false);
+
+        restartButton.gameObject.SetActive(false); 
+        menuButton.gameObject.SetActive(false); 
+        quitButton.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -94,6 +104,10 @@ public class PlayerAnimationController : MonoBehaviour
             flashMuzzle.SetActive(true);
             StartCoroutine(HideMuzzle(0.12f));
         }
+         if (gunshot != null)
+        {
+            gunshot.Play(); 
+        }
     }
 
     private IEnumerator HideMuzzle(float delay)
@@ -120,6 +134,10 @@ public class PlayerAnimationController : MonoBehaviour
         {
             gameOverText.gameObject.SetActive(true);
             gameOverText.text = "GAME OVER";
+
+            restartButton.gameObject.SetActive(true); 
+            menuButton.gameObject.SetActive(true); 
+            quitButton.gameObject.SetActive(true);
         }
         Time.timeScale = 0;
     }
