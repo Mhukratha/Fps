@@ -5,24 +5,33 @@ using System.Collections;
 
 public class LoadingSceneManager : MonoBehaviour
 {
+    private bool isHost;
+
     void Start()
     {
-        StartCoroutine(LoadMultiplayerScene());
-    }
+        isHost = PlayerPrefs.GetInt("IsHost") == 1;
 
-    IEnumerator LoadMultiplayerScene()
-    {
-        yield return new WaitForSeconds(3); // จำลองการโหลด 3 วินาที
-
-        if (PlayerPrefs.GetInt("IsHost") == 1)
+        if (isHost)
         {
             NetworkManager.Singleton.StartHost();
+            StartCoroutine(WaitForClientsAndLoadScene());
         }
         else
         {
             NetworkManager.Singleton.StartClient();
         }
+    }
 
-        SceneManager.LoadScene("Multiplayer");
+    IEnumerator WaitForClientsAndLoadScene()
+    {
+        Debug.Log("Waiting for clients to join...");
+
+        while (NetworkManager.Singleton.ConnectedClientsList.Count < 2) // รอจนกว่ามี Client อย่างน้อย 1 คน
+        {
+            yield return new WaitForSeconds(1);
+        }
+
+        Debug.Log("Client joined! Loading Multiplayer Scene...");
+        SceneManager.LoadScene("Mul"); // เปลี่ยนไป Multiplayer Scene
     }
 }
