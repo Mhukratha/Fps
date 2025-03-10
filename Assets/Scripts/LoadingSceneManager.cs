@@ -9,16 +9,34 @@ public class LoadingSceneManager : MonoBehaviour
 
     void Start()
     {
+        // เช็คว่า NetworkManager ทำงานอยู่แล้วหรือไม่
+        if (NetworkManager.Singleton.IsListening)
+        {
+            Debug.LogWarning("NetworkManager is already running. Skipping initialization.");
+            return;
+        }
+
         isHost = PlayerPrefs.GetInt("IsHost") == 1;
 
         if (isHost)
         {
-            NetworkManager.Singleton.StartHost();
+            Debug.Log("Starting Host...");
+            if (!NetworkManager.Singleton.StartHost()) // ตรวจสอบว่า StartHost() สำเร็จหรือไม่
+            {
+                Debug.LogError("Failed to start Host. Port might be in use. Shutting down.");
+                return;
+            }
+
             StartCoroutine(WaitForClientsAndLoadScene());
         }
         else
         {
-            NetworkManager.Singleton.StartClient();
+            Debug.Log("Starting Client...");
+            if (!NetworkManager.Singleton.StartClient()) // ตรวจสอบว่า StartClient() สำเร็จหรือไม่
+            {
+                Debug.LogError("Failed to start Client. Shutting down.");
+                return;
+            }
         }
     }
 

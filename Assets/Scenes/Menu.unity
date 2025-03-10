@@ -997,7 +997,7 @@ MonoBehaviour:
   m_DisconnectTimeoutMS: 30000
   ConnectionData:
     Address: 127.0.0.1
-    Port: 7777
+    Port: 8888
     ServerListenAddress: 127.0.0.1
   DebugSimulator:
     PacketDelayMS: 0
@@ -1019,7 +1019,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1401403517}
-    PlayerPrefab: {fileID: 2425601433342429689, guid: 155e3376a87086e4d9e6e003a8f12a48, type: 3}
+    PlayerPrefab: {fileID: 2425601433342429689, guid: 689bc28dda3bcd340beadd0131fb744d, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: dfbbead4bbed58c4f96a3020a12f78d0, type: 2}
