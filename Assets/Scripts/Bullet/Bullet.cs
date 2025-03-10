@@ -20,19 +20,21 @@ public class Bullet : MonoBehaviour
         // ทำลายกระสุนเมื่อถึงเวลา
         if (Time.time - startTime >= secondDestroy)
         {
-            Destroy(this.gameObject);
+            Destroy(gameObject);
         }
     }
+
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Zombie"))  // ถ้าชนกับซอมบี้
         {
-            // เรียกฟังก์ชันลดเลือดของซอมบี้
-            other.GetComponent<ZombieController>().TakeDamage(damage);  // ลดเลือดของซอมบี้
+            ZombieController zombie = other.GetComponent<ZombieController>();
+            if (zombie != null && zombie.IsServer)  // ✅ ต้องเช็คว่าเป็น Server
+            {
+                zombie.TakeDamageServerRpc(damage);  // ✅ ใช้ ServerRpc เพื่อให้ Sync กับทุกเครื่อง
+            }
+
             Destroy(gameObject);  // ทำลายกระสุนหลังจากชน
         }
     }
 }
-
-
-

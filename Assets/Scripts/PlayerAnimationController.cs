@@ -1,8 +1,9 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode; // ✅ เพิ่ม Netcode
 
-public class PlayerAnimationController : MonoBehaviour
+public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่ยนเป็น NetworkBehaviour
 {
     [Header("Player Movement")]
     [SerializeField] private float moveSpeed = 5f;
@@ -33,7 +34,6 @@ public class PlayerAnimationController : MonoBehaviour
     public GameObject menuButton;
     public GameObject quitButton;
 
-
     private void Start()
     {
         animator = GetComponent<Animator>();
@@ -46,11 +46,18 @@ public class PlayerAnimationController : MonoBehaviour
         restartButton.gameObject.SetActive(false); 
         menuButton.gameObject.SetActive(false); 
         quitButton.gameObject.SetActive(false);
+
+        // ✅ ตรวจสอบว่าเป็นเจ้าของ (Client ที่ควบคุมตัวละครนี้)
+        if (!IsOwner) 
+        {
+            enabled = false; // ❌ ปิดการควบคุมถ้าไม่ใช่เจ้าของ
+        }
     }
 
     private void Update()
     {
         if (isDead) return;
+        if (!IsOwner) return; // ✅ ตรวจสอบว่าผู้เล่นนี้เป็นเจ้าของหรือไม่
 
         HandleMovement();
         HandleShooting();
@@ -104,7 +111,7 @@ public class PlayerAnimationController : MonoBehaviour
             flashMuzzle.SetActive(true);
             StartCoroutine(HideMuzzle(0.12f));
         }
-         if (gunshot != null)
+        if (gunshot != null)
         {
             gunshot.Play(); 
         }
@@ -158,13 +165,3 @@ public class PlayerAnimationController : MonoBehaviour
         }
     }
 }
-
-
-
-
-
-
-
-
-
-

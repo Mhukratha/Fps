@@ -1,43 +1,21 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; 
+using UnityEngine.SceneManagement;
 using Unity.Netcode;
-
+using Unity.Netcode.Transports.UTP;
 
 public class Scnce : MonoBehaviour
 {
-    private static bool isHostCreated = false;
-
-     public void Multi()
+       public void StartHost()
     {
-        SceneManager.LoadScene("Mul");
+        NetworkManager.Singleton.StartHost();
+        Debug.Log("🖥️ Host Started");
+        SceneManager.LoadScene("Loading"); // ✅ เปลี่ยนไปที่ Scene "Loading"
     }
 
-     public void Solo()
+    public void StartClient()
     {
-        SceneManager.LoadScene("SampleScene");
-    }
-    public void Exit()
-    {
-        Application.Quit();
-
-        #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-        #endif
-    }
- 
-     public void JoinGame()
-    {
-        if (!isHostCreated)
-        {
-            isHostCreated = true;
-            PlayerPrefs.SetInt("IsHost", 1);
-        }
-        else
-        {
-            PlayerPrefs.SetInt("IsHost", 0);
-        }
-
-        SceneManager.LoadScene("Loading");
+        NetworkManager.Singleton.StartClient();
+        Debug.Log("🎮 Client Started");
+        SceneManager.LoadScene("Loading"); // ✅ เปลี่ยนไปที่ Scene "Loading"
     }
 }
-

@@ -29,10 +29,10 @@ public class GameController : MonoBehaviour
 
     private void Start()
     {
-        winText.gameObject.SetActive(false); // ซ่อนข้อความชนะตอนเริ่มเกม
-        waveText.gameObject.SetActive(true);  // แสดง waveText ตอนเริ่มเกม
-        zombiesPerWave = 5;  // จำนวนซอมบี้ในเวฟแรก
-        StartCoroutine(SpawnZombies()); // เริ่มการ spawn ซอมบี้
+        winText.gameObject.SetActive(false); 
+        waveText.gameObject.SetActive(true);  
+        zombiesPerWave = 5;  
+        StartCoroutine(SpawnZombies()); 
 
         menuButton.gameObject.SetActive(false); 
         quitButton.gameObject.SetActive(false);

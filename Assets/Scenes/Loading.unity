@@ -230,7 +230,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 597084112}
-  - component: {fileID: 597084113}
   m_Layer: 0
   m_Name: LoadingManager
   m_TagString: Untagged
@@ -253,18 +252,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &597084113
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 597084111}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 46283c32c8209a841bf227e7276bc46d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &741159011
 GameObject:
   m_ObjectHideFlags: 0
@@ -475,7 +462,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1482530777}
   - component: {fileID: 1482530776}
-  - component: {fileID: 1482530775}
   - component: {fileID: 1482530774}
   m_Layer: 0
   m_Name: Camera
@@ -528,14 +514,6 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
---- !u!81 &1482530775
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1482530773}
-  m_Enabled: 0
 --- !u!20 &1482530776
 Camera:
   m_ObjectHideFlags: 0
