@@ -1,9 +1,9 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using Unity.Netcode; // ✅ เพิ่ม Netcode
+using Unity.Netcode;
 
-public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่ยนเป็น NetworkBehaviour
+public class PlayerAnimationController : NetworkBehaviour
 {
     [Header("Player Movement")]
     [SerializeField] private float moveSpeed = 5f;
@@ -12,7 +12,8 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
 
     [Header("Player Stats")]
     [SerializeField] private int health = 100;
-    [SerializeField] private Image healthBar;
+    private int currentHealth;
+    private bool isDead = false;
 
     [Header("Shooting")]
     [SerializeField] private GameObject bullet;
@@ -20,46 +21,70 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
     [SerializeField] private Transform firePoint;
     [SerializeField] private float fireRate = 0.3f;
 
-    [Header("UI Elements")]
-    [SerializeField] private Text gameOverText;
-
+    [Header("Audio")]
     public AudioSource gunshot;  
+
     private Animator animator;
     private Rigidbody rb;
-    private int currentHealth;
     private float nextFire = 0.0f;
-    private bool isDead = false;
 
-    public GameObject restartButton;
-    public GameObject menuButton;
-    public GameObject quitButton;
+    private Image healthBar;
+    private Text gameOverText;
+    private GameObject restartButton;
+    private GameObject menuButton;
+    private GameObject quitButton;
+
+    private Camera playerCamera;
+    private float mouseX;
+    private float mouseSensitivity = 2.0f;
 
     private void Start()
-    {
+    {   
+        if (!IsOwner) 
+        {
+            enabled = false;
+            return;
+        }
+
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
 
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
         currentHealth = health;
+        isDead = false;
+
         if (flashMuzzle != null) flashMuzzle.SetActive(false);
-        if (gameOverText != null) gameOverText.gameObject.SetActive(false);
 
-        restartButton.gameObject.SetActive(false); 
-        menuButton.gameObject.SetActive(false); 
-        quitButton.gameObject.SetActive(false);
-
-        // ✅ ตรวจสอบว่าเป็นเจ้าของ (Client ที่ควบคุมตัวละครนี้)
-        if (!IsOwner) 
+        GameObject canvas = GameObject.FindWithTag("GameCanvas");
+        if (canvas != null)
         {
-            enabled = false; // ❌ ปิดการควบคุมถ้าไม่ใช่เจ้าของ
+            healthBar = canvas.transform.Find("HealthBar").GetComponent<Image>();
+            gameOverText = canvas.transform.Find("GameOverText").GetComponent<Text>();
+            restartButton = canvas.transform.Find("RestartButton").gameObject;
+            menuButton = canvas.transform.Find("MenuButton").gameObject;
+            quitButton = canvas.transform.Find("QuitButton").gameObject;
+        }
+
+        if (gameOverText != null) gameOverText.gameObject.SetActive(false);
+        if (restartButton != null) restartButton.SetActive(false);
+        if (menuButton != null) menuButton.SetActive(false);
+        if (quitButton != null) quitButton.SetActive(false);
+
+        playerCamera = GetComponentInChildren<Camera>();
+        if (playerCamera != null)
+        {
+            playerCamera.gameObject.SetActive(true);
         }
     }
 
     private void Update()
     {
-        if (isDead) return;
-        if (!IsOwner) return; // ✅ ตรวจสอบว่าผู้เล่นนี้เป็นเจ้าของหรือไม่
+        if (!IsOwner || isDead) return;
 
         HandleMovement();
+        HandleCamera();
         HandleShooting();
     }
 
@@ -67,9 +92,8 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
     {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
-        float mouseX = Input.GetAxis("Mouse X");
 
-        transform.Rotate(Vector3.up * mouseX * rotationSpeed * Time.deltaTime);
+        transform.Translate(new Vector3(horizontal, 0, vertical) * moveSpeed * Time.deltaTime);
 
         if (horizontal != 0 || vertical != 0)
         {
@@ -83,6 +107,12 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
             animator.SetBool("IsWalking", false);
             animator.SetBool("IsRunning", false);
         }
+    }
+
+    private void HandleCamera()
+    {
+        mouseX += Input.GetAxis("Mouse X") * mouseSensitivity;
+        transform.rotation = Quaternion.Euler(0, mouseX, 0);
     }
 
     private void HandleShooting()
@@ -103,7 +133,8 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
     {
         if (bullet != null && firePoint != null)
         {
-            Instantiate(bullet, firePoint.position, firePoint.rotation);
+            GameObject newBullet = Instantiate(bullet, firePoint.position, firePoint.rotation);
+            newBullet.GetComponent<Bullet>().SetDirection(firePoint.forward);
         }
 
         if (flashMuzzle != null)
@@ -137,15 +168,12 @@ public class PlayerAnimationController : NetworkBehaviour // ✅ เปลี่
     {
         isDead = true;
         animator.SetTrigger("Die");
-        if (gameOverText != null)
-        {
-            gameOverText.gameObject.SetActive(true);
-            gameOverText.text = "GAME OVER";
 
-            restartButton.gameObject.SetActive(true); 
-            menuButton.gameObject.SetActive(true); 
-            quitButton.gameObject.SetActive(true);
-        }
+        if (gameOverText != null) gameOverText.gameObject.SetActive(true);
+        if (restartButton != null) restartButton.SetActive(true);
+        if (menuButton != null) menuButton.SetActive(true);
+        if (quitButton != null) quitButton.SetActive(true);
+        
         Time.timeScale = 0;
     }
 

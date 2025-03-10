@@ -1458,7 +1458,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 4061720879
+  GlobalObjectIdHash: 649164427
   InScenePlacedSourceGlobalObjectIdHash: 4061720879
   DeferredDespawnTick: 0
   Ownership: 1
@@ -1488,16 +1488,11 @@ MonoBehaviour:
   runSpeed: 8
   rotationSpeed: 250
   health: 100
-  healthBar: {fileID: 0}
   bullet: {fileID: 4057081027863567870, guid: 320041467cdf53b47a40874e6a0b38a3, type: 3}
   flashMuzzle: {fileID: 1330362727366080950}
   firePoint: {fileID: 7147513513387910001}
   fireRate: 0.4
-  gameOverText: {fileID: 0}
   gunshot: {fileID: 1180883589762507860}
-  restartButton: {fileID: 0}
-  menuButton: {fileID: 0}
-  quitButton: {fileID: 0}
 --- !u!54 &1267219050534843405
 Rigidbody:
   m_ObjectHideFlags: 0

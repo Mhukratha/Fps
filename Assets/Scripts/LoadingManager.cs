@@ -4,10 +4,11 @@ using Unity.Netcode;
 
 public class LoadingManager : MonoBehaviour
 {
+    private int requiredPlayers = 2; // ✅ จำนวนผู้เล่นที่ต้องการก่อนเริ่มเกม
+
     private void Start()
     {
-        // ถ้าเป็น Host ให้เช็คว่ามีผู้เล่นครบ 2 คนแล้วหรือยัง
-        if (NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsServer)
         {
             NetworkManager.Singleton.OnClientConnectedCallback += CheckPlayers;
         }
@@ -15,15 +16,27 @@ public class LoadingManager : MonoBehaviour
 
     private void CheckPlayers(ulong clientId)
     {
-        if (NetworkManager.Singleton.ConnectedClientsList.Count >= 2)
+        int currentPlayers = NetworkManager.Singleton.ConnectedClientsList.Count;
+        Debug.Log($"✅ Client {clientId} joined. จำนวนผู้เล่นตอนนี้: {currentPlayers}/{requiredPlayers}");
+
+        if (currentPlayers >= requiredPlayers)
         {
-            SceneManager.LoadScene("Mul"); // เมื่อมีผู้เล่นครบ 2 คน ให้เข้าเกม
+            Debug.Log("🎮 ผู้เล่นครบแล้ว! เริ่มเกม...");
+            StartGame();
+        }
+    }
+
+    private void StartGame()
+    {
+        if (NetworkManager.Singleton.IsServer)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene("Mul", LoadSceneMode.Single);
         }
     }
 
     private void OnDestroy()
     {
-        if (NetworkManager.Singleton.IsHost)
+        if (NetworkManager.Singleton.IsServer)
         {
             NetworkManager.Singleton.OnClientConnectedCallback -= CheckPlayers;
         }
