@@ -70,6 +70,10 @@ public class ZombieController : NetworkBehaviour
     private void FindClosestPlayer()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        if (players.Length > 0)
+        {
+            targetPlayer = players[Random.Range(0, players.Length)].transform;
+        }
         float minDistance = Mathf.Infinity;
         Transform closest = null;
 
@@ -140,4 +144,15 @@ public class ZombieController : NetworkBehaviour
     {
         targetPlayer = playerTransform;
     }
+
+    [ClientRpc]
+    public void SyncZombieClientRpc(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer)
+        {
+            transform.position = position;
+            transform.rotation = rotation;
+        }
+    }
 }
+

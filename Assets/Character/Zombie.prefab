@@ -1752,7 +1752,7 @@ GameObject:
   - component: {fileID: 1589408801800092278}
   - component: {fileID: 3649369659736658749}
   - component: {fileID: 3121300984678303708}
-  - component: {fileID: 5845026609201428698}
+  - component: {fileID: 206690605861963037}
   m_Layer: 0
   m_Name: Zombie
   m_TagString: Zombie
@@ -1851,10 +1851,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1904291441
+  GlobalObjectIdHash: 286897407
   InScenePlacedSourceGlobalObjectIdHash: 1904291441
   DeferredDespawnTick: 0
-  Ownership: 1
+  Ownership: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
   ActiveSceneSynchronization: 0
@@ -2121,7 +2121,7 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &5845026609201428698
+--- !u!114 &206690605861963037
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

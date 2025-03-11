@@ -24,14 +24,14 @@ public class GameController : NetworkBehaviour
     public GameObject restartButton;
 
     private NetworkVariable<float> gameTime = new NetworkVariable<float>(
-        300f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+        30f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
     );
 
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
-            gameTime.Value = 300f;
+            gameTime.Value = 30f;
             gameEnded = false;
             StartCoroutine(SpawnZombies());
         }
@@ -79,14 +79,16 @@ public class GameController : NetworkBehaviour
 
             waveNumber++;
             zombiesPerWave += 2;
-            UpdateWaveClientRpc(waveNumber);
 
+            UpdateWaveClientRpc(waveNumber);
             yield return new WaitForSeconds(waveInterval);
         }
     }
 
     private void SpawnZombie()
     {
+        if (!IsServer) return; // ✅ ป้องกัน Client เรียก Spawn
+
         Vector3 spawnPosition = new Vector3(
             Random.Range(spawnAreaCenter.position.x - spawnAreaSize.x / 2, spawnAreaCenter.position.x + spawnAreaSize.x / 2),
             spawnAreaCenter.position.y,
@@ -94,8 +96,38 @@ public class GameController : NetworkBehaviour
         );
 
         GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, Quaternion.identity);
-        newZombie.GetComponent<NetworkObject>().Spawn();
+        NetworkObject networkObject = newZombie.GetComponent<NetworkObject>();
+
+        if (networkObject != null)
+        {
+            networkObject.Spawn(true); // ✅ Spawn อย่างถูกต้องโดย Server เท่านั้น
+        }
+        else
+        {
+            Debug.LogError("❌ NetworkObject ไม่ถูกต้องใน ZombiePrefab!");
+            return;
+        }
+
+        // ✅ รอ 0.1 วิ ให้แน่ใจว่า Spawn สำเร็จ ก่อน Sync ไปยัง Client
+        StartCoroutine(SyncZombieAfterSpawn(newZombie, spawnPosition));
     }
+
+    private IEnumerator SyncZombieAfterSpawn(GameObject zombie, Vector3 position)
+    {
+        yield return new WaitForSeconds(0.1f); // ✅ ให้แน่ใจว่า Spawn เสร็จแล้ว
+
+        ZombieController zombieController = zombie.GetComponent<ZombieController>();
+        if (zombieController != null)
+        {
+            zombieController.SyncZombieClientRpc(position, Quaternion.identity);
+            Debug.Log("✅ Zombie ถูก Sync ไปยัง Client แล้ว!");
+        }
+        else
+        {
+            Debug.LogError("❌ ZombieController ไม่พบใน Prefab!");
+        }
+    }
+
 
     [ClientRpc]
     private void UpdateWaveClientRpc(int wave)
@@ -106,11 +138,12 @@ public class GameController : NetworkBehaviour
     [ClientRpc]
     private void EndGameClientRpc()
     {
-        if (!IsOwner) return;
-
         timerText.gameObject.SetActive(false);
         winText.gameObject.SetActive(true);
         Time.timeScale = 0;
+
+        Debug.Log("🔴 [GameController] เวลาในเกมหมด -> Game Over!");
+
 
         quitButton.gameObject.SetActive(true);
         menuButton.gameObject.SetActive(true);

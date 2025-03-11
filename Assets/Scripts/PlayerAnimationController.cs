@@ -51,24 +51,21 @@ public class PlayerAnimationController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // ✅ ปิดกล้องของ Player คนอื่น
         Camera[] allCameras = FindObjectsOfType<Camera>();
         foreach (Camera cam in allCameras)
         {
-            if (cam.transform.root != transform) // ❌ ปิดกล้องที่ไม่ได้อยู่ใน Player ของตัวเอง
+            if (cam.transform.root != transform) 
             {
                 cam.gameObject.SetActive(false);
             }
         }
 
-        // ✅ เปิดกล้องของตัวเอง
         Camera myCamera = GetComponentInChildren<Camera>();
         if (myCamera != null)
         {
             myCamera.gameObject.SetActive(true);
         }
 
-        // ✅ เช็คว่า UI HealthBar อยู่ที่ Canvas และเซ็ตค่าถูกต้อง
         GameObject canvas = GameObject.FindWithTag("GameCanvas");
         if (canvas != null)
         {
@@ -182,6 +179,9 @@ public class PlayerAnimationController : NetworkBehaviour
 
         isDead = true;
         animator.SetTrigger("Die");
+
+        Debug.Log("🔴 [PlayerAnimationController] Player ตาย -> Game Over!");
+
 
         if (IsOwner)
         {
