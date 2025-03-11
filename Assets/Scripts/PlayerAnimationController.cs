@@ -31,15 +31,29 @@ public class PlayerAnimationController : NetworkBehaviour
     private float nextFire = 0.0f;
     private Camera playerCamera;
     private Image healthBar;
+    private Text gameOverText; 
+
+    private void Start()
+    {
+        if (!IsOwner) return; // ✅ ป้องกัน Client จากการแก้ไข NetworkVariable
+
+        if (IsServer) // ✅ ให้เซิร์ฟเวอร์เป็นคนกำหนดค่า
+        {
+            currentHealth.Value = health; 
+        }
+
+        isDead = false;
+        Debug.Log($"🎮 Player {NetworkObjectId} เริ่มเกม | HP: {currentHealth.Value}");
+    }   
 
     public override void OnNetworkSpawn()
     {
-        if (!IsOwner)
+            if (!IsOwner)
         {
             Camera playerCamera = GetComponentInChildren<Camera>();
             if (playerCamera != null)
             {
-                playerCamera.gameObject.SetActive(false); // ❌ ปิดกล้องของ Player ที่ไม่ใช่เจ้าของ
+                playerCamera.gameObject.SetActive(false);
             }
             enabled = false;
             return;
@@ -51,21 +65,7 @@ public class PlayerAnimationController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        Camera[] allCameras = FindObjectsOfType<Camera>();
-        foreach (Camera cam in allCameras)
-        {
-            if (cam.transform.root != transform) 
-            {
-                cam.gameObject.SetActive(false);
-            }
-        }
-
-        Camera myCamera = GetComponentInChildren<Camera>();
-        if (myCamera != null)
-        {
-            myCamera.gameObject.SetActive(true);
-        }
-
+        // ✅ ใช้ตัวแปร canvas เพียงครั้งเดียว
         GameObject canvas = GameObject.FindWithTag("GameCanvas");
         if (canvas != null)
         {
@@ -74,8 +74,37 @@ public class PlayerAnimationController : NetworkBehaviour
             {
                 healthBar = healthBarTransform.GetComponent<Image>();
             }
+
+            Transform gameOverTransform = canvas.transform.Find("GameOverText");
+            if (gameOverTransform != null)
+            {
+                gameOverText = gameOverTransform.GetComponent<Text>();
+                gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text สำหรับทุกคน
+            }
+        }
+
+            if (IsServer) // ✅ เรียก ClientRpc จาก Server เท่านั้น
+        {
+            DisableGameOverClientRpc();
         }
     }
+
+    [ClientRpc]
+    private void DisableGameOverClientRpc()
+    {
+         Debug.Log($"🛠️ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText");
+
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(false);
+            Debug.Log($"✅ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText สำเร็จ");
+        }
+        else
+        {
+            Debug.LogError($"❌ [Client {NetworkManager.Singleton.LocalClientId}] ไม่พบ gameOverText");
+        }
+    }
+
 
 
     private void Update()
@@ -139,25 +168,22 @@ public class PlayerAnimationController : NetworkBehaviour
     public void TakeDamage(int damage)
     {
         if (!IsOwner) return;
-        TakeDamageServerRpc(damage, NetworkObjectId);
+        TakeDamageServerRpc(damage);
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void TakeDamageServerRpc(int damage, ulong playerId)
+    public void TakeDamageServerRpc(int damage)
     {
-        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(playerId)) return;
+        if (currentHealth.Value <= 0) return;
 
-        if (NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.TryGetComponent(out PlayerAnimationController player))
+        currentHealth.Value -= damage;
+        Debug.Log($"💥 Player {NetworkObjectId} ถูกโจมตี! HP เหลือ {currentHealth.Value}");
+
+        UpdateHealthBarClientRpc(currentHealth.Value, NetworkObjectId);
+
+        if (currentHealth.Value <= 0)
         {
-            if (player.currentHealth.Value <= 0) return;
-
-            player.currentHealth.Value -= damage;
-            player.UpdateHealthBarClientRpc(player.currentHealth.Value, playerId);
-
-            if (player.currentHealth.Value <= 0)
-            {
-                player.DieClientRpc(playerId);
-            }
+            DieClientRpc(NetworkObjectId);
         }
     }
 
@@ -180,12 +206,23 @@ public class PlayerAnimationController : NetworkBehaviour
         isDead = true;
         animator.SetTrigger("Die");
 
-        Debug.Log("🔴 [PlayerAnimationController] Player ตาย -> Game Over!");
-
+        Debug.Log($"❌ Player {NetworkObjectId} ตายแล้ว!");
 
         if (IsOwner)
         {
             Time.timeScale = 0;
+            if (GameController.Instance != null)
+            {
+                GameController.Instance.ShowGameOverClientRpc(); // ✅ ให้ GameController แสดง Game Over
+            }
         }
+    }
+    [ClientRpc]
+    public void ShowGameOverClientRpc()
+    {
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true); // ✅ แสดงข้อความ Game Over
+        }   
     }
 }

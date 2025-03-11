@@ -684,7 +684,7 @@ Transform:
   m_GameObject: {fileID: 758174826}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 423.81, y: 32.22, z: 655.94}
+  m_LocalPosition: {x: 423.81, y: 32.22, z: 659.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -972,7 +972,7 @@ Transform:
   m_GameObject: {fileID: 1450860719}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 430.9, y: 35.88, z: 652.7}
+  m_LocalPosition: {x: 423.52, y: 35.88, z: 662.67}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1102,6 +1102,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowTopMostFoldoutHeaderGroup: 1
+  gameOverText: {fileID: 8581724822862248305}
   zombiePrefab: {fileID: 4493914613880827488, guid: 4a35a88a23d9bd44e80eece5badf578c, type: 3}
   spawnAreaCenter: {fileID: 1605938198}
   spawnAreaSize: {x: 20, y: 0, z: 20}
@@ -1508,6 +1509,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: 'GameCanvas '
       objectReference: {fileID: 0}
+    - target: {fileID: 1604014293319786878, guid: 0fa0db0d44f02b94086c12edacba6f96, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6683676595412177442, guid: 0fa0db0d44f02b94086c12edacba6f96, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -1593,6 +1598,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0fa0db0d44f02b94086c12edacba6f96, type: 3}
+--- !u!114 &8581724822862248305 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2373921866681921085, guid: 0fa0db0d44f02b94086c12edacba6f96, type: 3}
+  m_PrefabInstance: {fileID: 8581724822862248304}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

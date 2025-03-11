@@ -5,6 +5,8 @@ using Unity.Netcode;
 
 public class GameController : NetworkBehaviour
 {
+    public static GameController Instance; // ✅ สร้าง Instance เพื่อให้เรียกใช้ได้ง่าย
+    public Text gameOverText;
     public GameObject zombiePrefab;
     public Transform spawnAreaCenter;
     public Vector3 spawnAreaSize;
@@ -23,12 +25,28 @@ public class GameController : NetworkBehaviour
     public GameObject quitButton;
     public GameObject restartButton;
 
+
+
     private NetworkVariable<float> gameTime = new NetworkVariable<float>(
         30f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
     );
 
+      private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+    }
+
     public override void OnNetworkSpawn()
     {
+
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text ตอนเริ่มเกม
+        }
+
         if (IsServer)
         {
             gameTime.Value = 30f;
@@ -82,6 +100,15 @@ public class GameController : NetworkBehaviour
 
             UpdateWaveClientRpc(waveNumber);
             yield return new WaitForSeconds(waveInterval);
+        }
+    }
+
+    [ClientRpc]
+    public void ShowGameOverClientRpc()
+    {
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true); // ✅ แสดง Game Over Text ทุก Client
         }
     }
 
@@ -158,4 +185,5 @@ public class GameController : NetworkBehaviour
             Gizmos.DrawWireCube(spawnAreaCenter.position, spawnAreaSize);
         }
     }
+
 }
