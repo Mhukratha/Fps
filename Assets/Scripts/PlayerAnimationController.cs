@@ -7,13 +7,15 @@ public class PlayerAnimationController : NetworkBehaviour
 {
     [Header("Player Movement")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float runSpeed = 10f;
     [SerializeField] private float rotationSpeed = 250f;
 
     [Header("Player Stats")]
     [SerializeField] private int health = 100;
-    private int currentHealth;
     private bool isDead = false;
+
+    private NetworkVariable<int> currentHealth = new NetworkVariable<int>(
+        100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+    );
 
     [Header("Shooting")]
     [SerializeField] private GameObject bullet;
@@ -27,21 +29,18 @@ public class PlayerAnimationController : NetworkBehaviour
     private Animator animator;
     private Rigidbody rb;
     private float nextFire = 0.0f;
-
-    private Image healthBar;
-    private Text gameOverText;
-    private GameObject restartButton;
-    private GameObject menuButton;
-    private GameObject quitButton;
-
     private Camera playerCamera;
-    private float mouseX;
-    private float mouseSensitivity = 2.0f;
+    private Image healthBar;
 
-    private void Start()
-    {   
-        if (!IsOwner) 
+    public override void OnNetworkSpawn()
+    {
+        if (!IsOwner)
         {
+            Camera playerCamera = GetComponentInChildren<Camera>();
+            if (playerCamera != null)
+            {
+                playerCamera.gameObject.SetActive(false); // ❌ ปิดกล้องของ Player ที่ไม่ใช่เจ้าของ
+            }
             enabled = false;
             return;
         }
@@ -52,32 +51,35 @@ public class PlayerAnimationController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        currentHealth = health;
-        isDead = false;
+        // ✅ ปิดกล้องของ Player คนอื่น
+        Camera[] allCameras = FindObjectsOfType<Camera>();
+        foreach (Camera cam in allCameras)
+        {
+            if (cam.transform.root != transform) // ❌ ปิดกล้องที่ไม่ได้อยู่ใน Player ของตัวเอง
+            {
+                cam.gameObject.SetActive(false);
+            }
+        }
 
-        if (flashMuzzle != null) flashMuzzle.SetActive(false);
+        // ✅ เปิดกล้องของตัวเอง
+        Camera myCamera = GetComponentInChildren<Camera>();
+        if (myCamera != null)
+        {
+            myCamera.gameObject.SetActive(true);
+        }
 
+        // ✅ เช็คว่า UI HealthBar อยู่ที่ Canvas และเซ็ตค่าถูกต้อง
         GameObject canvas = GameObject.FindWithTag("GameCanvas");
         if (canvas != null)
         {
-            healthBar = canvas.transform.Find("HealthBar").GetComponent<Image>();
-            gameOverText = canvas.transform.Find("GameOverText").GetComponent<Text>();
-            restartButton = canvas.transform.Find("RestartButton").gameObject;
-            menuButton = canvas.transform.Find("MenuButton").gameObject;
-            quitButton = canvas.transform.Find("QuitButton").gameObject;
-        }
-
-        if (gameOverText != null) gameOverText.gameObject.SetActive(false);
-        if (restartButton != null) restartButton.SetActive(false);
-        if (menuButton != null) menuButton.SetActive(false);
-        if (quitButton != null) quitButton.SetActive(false);
-
-        playerCamera = GetComponentInChildren<Camera>();
-        if (playerCamera != null)
-        {
-            playerCamera.gameObject.SetActive(true);
+            Transform healthBarTransform = canvas.transform.Find("HealthBar");
+            if (healthBarTransform != null)
+            {
+                healthBar = healthBarTransform.GetComponent<Image>();
+            }
         }
     }
+
 
     private void Update()
     {
@@ -93,39 +95,22 @@ public class PlayerAnimationController : NetworkBehaviour
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        transform.Translate(new Vector3(horizontal, 0, vertical) * moveSpeed * Time.deltaTime);
-
-        if (horizontal != 0 || vertical != 0)
-        {
-            animator.SetBool("IsWalking", true);
-            float speed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : moveSpeed;
-            animator.SetBool("IsRunning", Input.GetKey(KeyCode.LeftShift));
-            transform.Translate(new Vector3(horizontal, 0, vertical) * speed * Time.deltaTime);
-        }
-        else
-        {
-            animator.SetBool("IsWalking", false);
-            animator.SetBool("IsRunning", false);
-        }
+        Vector3 moveDirection = transform.forward * vertical + transform.right * horizontal;
+        transform.position += moveDirection * moveSpeed * Time.deltaTime;
     }
 
     private void HandleCamera()
     {
-        mouseX += Input.GetAxis("Mouse X") * mouseSensitivity;
-        transform.rotation = Quaternion.Euler(0, mouseX, 0);
+        float mouseX = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
+        transform.Rotate(0, mouseX, 0);
     }
 
     private void HandleShooting()
     {
         if (Input.GetMouseButtonDown(0) && Time.time > nextFire)
         {
-            animator.SetBool("IsShooting", true);
             nextFire = Time.time + fireRate;
             Fire();
-        }
-        else if (Input.GetMouseButtonUp(0))
-        {
-            animator.SetBool("IsShooting", false);
         }
     }
 
@@ -144,7 +129,7 @@ public class PlayerAnimationController : NetworkBehaviour
         }
         if (gunshot != null)
         {
-            gunshot.Play(); 
+            gunshot.Play();
         }
     }
 
@@ -156,40 +141,51 @@ public class PlayerAnimationController : NetworkBehaviour
 
     public void TakeDamage(int damage)
     {
-        if (isDead) return;
-
-        currentHealth -= damage;
-        UpdateHealthBar();
-        if (currentHealth <= 0) Die();
-        else animator.SetTrigger("Hit");
+        if (!IsOwner) return;
+        TakeDamageServerRpc(damage, NetworkObjectId);
     }
 
-    private void Die()
+    [ServerRpc(RequireOwnership = false)]
+    private void TakeDamageServerRpc(int damage, ulong playerId)
     {
-        isDead = true;
-        animator.SetTrigger("Die");
+        if (!NetworkManager.Singleton.ConnectedClients.ContainsKey(playerId)) return;
 
-        if (gameOverText != null) gameOverText.gameObject.SetActive(true);
-        if (restartButton != null) restartButton.SetActive(true);
-        if (menuButton != null) menuButton.SetActive(true);
-        if (quitButton != null) quitButton.SetActive(true);
-        
-        Time.timeScale = 0;
-    }
-
-    private void UpdateHealthBar()
-    {
-        if (healthBar != null)
+        if (NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.TryGetComponent(out PlayerAnimationController player))
         {
-            healthBar.fillAmount = (float)currentHealth / health;
+            if (player.currentHealth.Value <= 0) return;
+
+            player.currentHealth.Value -= damage;
+            player.UpdateHealthBarClientRpc(player.currentHealth.Value, playerId);
+
+            if (player.currentHealth.Value <= 0)
+            {
+                player.DieClientRpc(playerId);
+            }
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    [ClientRpc]
+    private void UpdateHealthBarClientRpc(int health, ulong playerId)
     {
-        if (other.CompareTag("Zombie"))
+        if (NetworkObjectId != playerId) return;
+
+        if (healthBar != null)
         {
-            TakeDamage(10);
+            healthBar.fillAmount = (float)health / this.health;
+        }
+    }
+
+    [ClientRpc]
+    private void DieClientRpc(ulong playerId)
+    {
+        if (NetworkObjectId != playerId) return;
+
+        isDead = true;
+        animator.SetTrigger("Die");
+
+        if (IsOwner)
+        {
+            Time.timeScale = 0;
         }
     }
 }

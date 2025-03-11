@@ -18,13 +18,14 @@ public class ZombieController : NetworkBehaviour
         100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
     );
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
-        if (!IsServer) return;
-
-        currentHealth.Value = maxHealth;
-        FindClosestPlayer();
-        StartCoroutine(UpdateTarget());
+        if (IsServer)
+        {
+            currentHealth.Value = maxHealth;
+            FindClosestPlayer();
+            StartCoroutine(UpdateTarget());
+        }
     }
 
     private IEnumerator UpdateTarget()
@@ -57,6 +58,13 @@ public class ZombieController : NetworkBehaviour
         Vector3 direction = (targetPlayer.position - transform.position).normalized;
         transform.position += direction * moveSpeed * Time.deltaTime;
         transform.LookAt(new Vector3(targetPlayer.position.x, transform.position.y, targetPlayer.position.z));
+        MoveClientRpc(transform.position);
+    }
+
+    [ClientRpc]
+    private void MoveClientRpc(Vector3 newPosition)
+    {
+        if (!IsServer) transform.position = newPosition;
     }
 
     private void FindClosestPlayer()
@@ -103,7 +111,7 @@ public class ZombieController : NetworkBehaviour
         isAttacking = false;
     }
 
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = false)]
     public void TakeDamageServerRpc(int damage)
     {
         if (currentHealth.Value <= 0) return;
@@ -112,16 +120,7 @@ public class ZombieController : NetworkBehaviour
 
         if (currentHealth.Value <= 0)
         {
-            Die();
-        }
-    }
-
-    private void Die()
-    {
-        DieClientRpc();
-
-        if (IsServer)
-        {
+            DieClientRpc();
             GetComponent<NetworkObject>().Despawn();
         }
     }

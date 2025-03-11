@@ -10,7 +10,6 @@ public class GameController : NetworkBehaviour
     public Vector3 spawnAreaSize;
     public Text timerText;
     public Text winText;
-    public Transform player;
     public Text waveText;
 
     [SerializeField] private float spawnInterval = 1f;
@@ -24,19 +23,21 @@ public class GameController : NetworkBehaviour
     public GameObject quitButton;
     public GameObject restartButton;
 
-    private NetworkVariable<float> gameTime = new NetworkVariable<float>(300f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<float> gameTime = new NetworkVariable<float>(
+        300f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+    );
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
             gameTime.Value = 300f;
+            gameEnded = false;
             StartCoroutine(SpawnZombies());
         }
 
-        gameEnded = false;
         winText.gameObject.SetActive(false);
-                waveText.gameObject.SetActive(true);
+        waveText.gameObject.SetActive(true);
         zombiesPerWave = 5;
 
         menuButton.gameObject.SetActive(false);
@@ -46,30 +47,24 @@ public class GameController : NetworkBehaviour
 
     private void Update()
     {
-        if (gameEnded) return;
+        if (!IsServer || gameEnded) return;
 
-        if (IsServer)
-        {
-            gameTime.Value -= Time.deltaTime;
-        }
-
-        int minutes = Mathf.FloorToInt(gameTime.Value / 60);
-        int seconds = Mathf.FloorToInt(gameTime.Value % 60);
-        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
-
-        waveText.text = "Wave: " + waveNumber;
+        gameTime.Value -= Time.deltaTime;
+        UpdateTimerClientRpc(gameTime.Value);
 
         if (gameTime.Value <= 0)
         {
             gameEnded = true;
-            timerText.gameObject.SetActive(false);
-            winText.gameObject.SetActive(true);
-            Time.timeScale = 0;
-
-            quitButton.gameObject.SetActive(true);
-            menuButton.gameObject.SetActive(true);
-            restartButton.gameObject.SetActive(true);
+            EndGameClientRpc();
         }
+    }
+
+    [ClientRpc]
+    private void UpdateTimerClientRpc(float time)
+    {
+        int minutes = Mathf.FloorToInt(time / 60);
+        int seconds = Mathf.FloorToInt(time % 60);
+        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
     private IEnumerator SpawnZombies()
@@ -84,8 +79,7 @@ public class GameController : NetworkBehaviour
 
             waveNumber++;
             zombiesPerWave += 2;
-
-            waveText.text = "Wave: " + waveNumber;
+            UpdateWaveClientRpc(waveNumber);
 
             yield return new WaitForSeconds(waveInterval);
         }
@@ -99,16 +93,29 @@ public class GameController : NetworkBehaviour
             Random.Range(spawnAreaCenter.position.z - spawnAreaSize.z / 2, spawnAreaCenter.position.z + spawnAreaSize.z / 2)
         );
 
-        GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, spawnAreaCenter.rotation);
+        GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, Quaternion.identity);
         newZombie.GetComponent<NetworkObject>().Spawn();
-
-        if (newZombie.TryGetComponent<ZombieController>(out ZombieController zombieController))
-        {
-            zombieController.SetGameController(this);
-            zombieController.SetPlayer(player);
-        }
     }
 
+    [ClientRpc]
+    private void UpdateWaveClientRpc(int wave)
+    {
+        waveText.text = "Wave: " + wave;
+    }
+
+    [ClientRpc]
+    private void EndGameClientRpc()
+    {
+        if (!IsOwner) return;
+
+        timerText.gameObject.SetActive(false);
+        winText.gameObject.SetActive(true);
+        Time.timeScale = 0;
+
+        quitButton.gameObject.SetActive(true);
+        menuButton.gameObject.SetActive(true);
+        restartButton.gameObject.SetActive(true);
+    }
 
     private void OnDrawGizmos()
     {
@@ -119,4 +126,3 @@ public class GameController : NetworkBehaviour
         }
     }
 }
-

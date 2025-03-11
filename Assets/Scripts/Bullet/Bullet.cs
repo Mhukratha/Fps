@@ -6,11 +6,12 @@ public class Bullet : MonoBehaviour
     public float speed = 20f;
     public float lifeTime = 2f;
     public int damage = 10;
-    private Vector3 moveDirection; // ✅ เพิ่มตัวแปร moveDirection
+    private Vector3 moveDirection;
 
-    public void SetDirection(Vector3 direction) // ✅ ฟังก์ชันกำหนดทิศทาง
+    public void SetDirection(Vector3 direction)
     {
         moveDirection = direction.normalized;
+        transform.forward = moveDirection; // ✅ กำหนดให้ Bullet หันไปตามทิศทางที่ต้องการ
     }
 
     private void Start()
@@ -20,7 +21,7 @@ public class Bullet : MonoBehaviour
 
     private void Update()
     {
-        transform.position += moveDirection * speed * Time.deltaTime;
+        transform.position += transform.forward * speed * Time.deltaTime; // ✅ ใช้ transform.forward แทน moveDirection
     }
 
     private void OnTriggerEnter(Collider other)
