@@ -23,32 +23,41 @@ public class PlayerAnimationController : NetworkBehaviour
     [SerializeField] private Transform firePoint;
     [SerializeField] private float fireRate = 0.3f;
 
+    [Header("Ammo System")]
+    [SerializeField] private int maxAmmo = 12;
+    [SerializeField] private float reloadTime = 2f;
+    private int currentAmmo;
+    private bool isReloading = false;
+    private Text ammoText;
+
     [Header("Audio")]
-    public AudioSource gunshot;  
+    public AudioSource gunshot;
 
     private Animator animator;
     private Rigidbody rb;
     private float nextFire = 0.0f;
     private Camera playerCamera;
     private Image healthBar;
-    private Text gameOverText; 
+    private Text gameOverText;
 
     private void Start()
     {
-        if (!IsOwner) return; // ✅ ป้องกัน Client จากการแก้ไข NetworkVariable
+        if (!IsOwner) return;
 
-        if (IsServer) // ✅ ให้เซิร์ฟเวอร์เป็นคนกำหนดค่า
+        currentAmmo = maxAmmo;
+
+        if (IsServer)
         {
-            currentHealth.Value = health; 
+            currentHealth.Value = health;
         }
 
         isDead = false;
         Debug.Log($"🎮 Player {NetworkObjectId} เริ่มเกม | HP: {currentHealth.Value}");
-    }   
+    }
 
     public override void OnNetworkSpawn()
     {
-            if (!IsOwner)
+        if (!IsOwner)
         {
             Camera playerCamera = GetComponentInChildren<Camera>();
             if (playerCamera != null)
@@ -65,7 +74,6 @@ public class PlayerAnimationController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // ✅ ใช้ตัวแปร canvas เพียงครั้งเดียว
         GameObject canvas = GameObject.FindWithTag("GameCanvas");
         if (canvas != null)
         {
@@ -79,11 +87,17 @@ public class PlayerAnimationController : NetworkBehaviour
             if (gameOverTransform != null)
             {
                 gameOverText = gameOverTransform.GetComponent<Text>();
-                gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text สำหรับทุกคน
+                gameOverText.gameObject.SetActive(false);
+            }
+
+            Transform ammoTextTransform = canvas.transform.Find("AmmoText");
+            if (ammoTextTransform != null)
+            {
+                ammoText = ammoTextTransform.GetComponent<Text>();
             }
         }
 
-            if (IsServer) // ✅ เรียก ClientRpc จาก Server เท่านั้น
+        if (IsServer)
         {
             DisableGameOverClientRpc();
         }
@@ -92,20 +106,11 @@ public class PlayerAnimationController : NetworkBehaviour
     [ClientRpc]
     private void DisableGameOverClientRpc()
     {
-         Debug.Log($"🛠️ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText");
-
         if (gameOverText != null)
         {
             gameOverText.gameObject.SetActive(false);
-            Debug.Log($"✅ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText สำเร็จ");
-        }
-        else
-        {
-            Debug.LogError($"❌ [Client {NetworkManager.Singleton.LocalClientId}] ไม่พบ gameOverText");
         }
     }
-
-
 
     private void Update()
     {
@@ -114,6 +119,7 @@ public class PlayerAnimationController : NetworkBehaviour
         HandleMovement();
         HandleCamera();
         HandleShooting();
+        UpdateAmmoUI();
     }
 
     private void HandleMovement()
@@ -133,10 +139,44 @@ public class PlayerAnimationController : NetworkBehaviour
 
     private void HandleShooting()
     {
+        if (isReloading) return;
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            StartCoroutine(Reload());
+            return;
+        }
+
         if (Input.GetMouseButtonDown(0) && Time.time > nextFire)
         {
-            nextFire = Time.time + fireRate;
-            Fire();
+            if (currentAmmo > 0)
+            {
+                nextFire = Time.time + fireRate;
+                Fire();
+                currentAmmo--;
+            }
+            else
+            {
+                Debug.Log("❗ กระสุนหมด! กด R เพื่อรีโหลด");
+            }
+        }
+    }
+
+    private IEnumerator Reload()
+    {
+        isReloading = true;
+        Debug.Log("🔄 กำลังรีโหลด...");
+        yield return new WaitForSeconds(reloadTime);
+        currentAmmo = maxAmmo;
+        isReloading = false;
+        Debug.Log("✅ รีโหลดสำเร็จ");
+    }
+
+    private void UpdateAmmoUI()
+    {
+        if (ammoText != null && IsOwner && !isDead)
+        {
+            ammoText.text = $"Ammo: {currentAmmo} / {maxAmmo}";
         }
     }
 
@@ -177,8 +217,6 @@ public class PlayerAnimationController : NetworkBehaviour
         if (currentHealth.Value <= 0) return;
 
         currentHealth.Value -= damage;
-        Debug.Log($"💥 Player {NetworkObjectId} ถูกโจมตี! HP เหลือ {currentHealth.Value}");
-
         UpdateHealthBarClientRpc(currentHealth.Value, NetworkObjectId);
 
         if (currentHealth.Value <= 0)
@@ -206,23 +244,29 @@ public class PlayerAnimationController : NetworkBehaviour
         isDead = true;
         animator.SetTrigger("Die");
 
-        Debug.Log($"❌ Player {NetworkObjectId} ตายแล้ว!");
-
         if (IsOwner)
         {
             Time.timeScale = 0;
             if (GameController.Instance != null)
             {
-                GameController.Instance.ShowGameOverClientRpc(); // ✅ ให้ GameController แสดง Game Over
+                GameController.Instance.ShowGameOverClientRpc();
             }
         }
     }
+
     [ClientRpc]
     public void ShowGameOverClientRpc()
     {
         if (gameOverText != null)
         {
-            gameOverText.gameObject.SetActive(true); // ✅ แสดงข้อความ Game Over
-        }   
+            gameOverText.gameObject.SetActive(true);
+        }
     }
+
+    public void AddAmmo(int amount)
+    {
+        currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
+        Debug.Log($"📦 ได้รับกระสุน {amount} นัด | ตอนนี้: {currentAmmo} / {maxAmmo}");
+    }
+
 }

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Netcode;
 using System.Collections;
 
@@ -9,6 +9,9 @@ public class ZombieController : NetworkBehaviour
     [SerializeField] private float attackRange = 1.5f;
     [SerializeField] private float moveSpeed = 2.5f;
     [SerializeField] private int maxHealth = 100;
+    [SerializeField] private GameObject ammoBoxPrefab;
+
+
 
     private bool isAttacking;
     private Transform targetPlayer;
@@ -125,9 +128,20 @@ public class ZombieController : NetworkBehaviour
         if (currentHealth.Value <= 0)
         {
             DieClientRpc();
+
+            // 👇 ดรอปกล่องกระสุน (Multiplayer ได้)
+            if (ammoBoxPrefab != null)
+            {
+                GameObject box = Instantiate(ammoBoxPrefab, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+                NetworkObject netObj = box.GetComponent<NetworkObject>();
+                if (netObj != null) netObj.Spawn();
+            }
+
             GetComponent<NetworkObject>().Despawn();
         }
     }
+
+
 
     [ClientRpc]
     private void DieClientRpc()

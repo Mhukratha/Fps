@@ -3275,6 +3275,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6733609850376833494}
   - component: {fileID: 833934142180004780}
+  - component: {fileID: -2429505153587785603}
   - component: {fileID: 8313706457031390006}
   - component: {fileID: 3932181872428127919}
   - component: {fileID: -2401793922595867090}
@@ -3336,6 +3337,31 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-2429505153587785603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6213075050325087084}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 1269771923
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &8313706457031390006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3348,16 +3374,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74e8ea4be19e2914786f1698f7a6fa9f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
   moveSpeed: 5
-  runSpeed: 8
   rotationSpeed: 250
   health: 100
-  healthBar: {fileID: 0}
   bullet: {fileID: 4057081027863567870, guid: 320041467cdf53b47a40874e6a0b38a3, type: 3}
   flashMuzzle: {fileID: 4301412331117193556}
   firePoint: {fileID: 1547106206076779923}
   fireRate: 0.3
-  gameOverText: {fileID: 0}
+  maxAmmo: 12
+  reloadTime: 2
+  gunshot: {fileID: 0}
 --- !u!54 &3932181872428127919
 Rigidbody:
   m_ObjectHideFlags: 0

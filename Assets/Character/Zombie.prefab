@@ -1851,7 +1851,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 286897407
+  GlobalObjectIdHash: 1904291441
   InScenePlacedSourceGlobalObjectIdHash: 1904291441
   DeferredDespawnTick: 0
   Ownership: 0
@@ -1881,6 +1881,7 @@ MonoBehaviour:
   attackRange: 2.5
   moveSpeed: 2.5
   maxHealth: 100
+  ammoBoxPrefab: {fileID: 6094436937054936699, guid: c5b82c05af9b84d4cb84c6420f03fbf9, type: 3}
 --- !u!136 &1549147214963952381
 CapsuleCollider:
   m_ObjectHideFlags: 0
