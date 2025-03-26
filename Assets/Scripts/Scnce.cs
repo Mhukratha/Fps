@@ -1,25 +1,21 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; 
-
+using UnityEngine.SceneManagement;
+using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 
 public class Scnce : MonoBehaviour
 {
-     public void Multi()
+       public void StartHost()
     {
-        SceneManager.LoadScene("Mul");
+        NetworkManager.Singleton.StartHost();
+        Debug.Log("🖥️ Host Started");
+        SceneManager.LoadScene("Loading"); // ✅ เปลี่ยนไปที่ Scene "Loading"
     }
 
-     public void Solo()
+    public void StartClient()
     {
-        SceneManager.LoadScene("SampleScene");
-    }
-    public void Exit()
-    {
-        Application.Quit();
-
-        #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-        #endif
+        NetworkManager.Singleton.StartClient();
+        Debug.Log("🎮 Client Started");
+        SceneManager.LoadScene("Loading"); // ✅ เปลี่ยนไปที่ Scene "Loading"
     }
 }
-

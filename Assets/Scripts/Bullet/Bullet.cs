@@ -1,38 +1,55 @@
 using UnityEngine;
+using Unity.Netcode;
 
 public class Bullet : MonoBehaviour
 {
-    public float speed = 0.5f;
-    public float secondDestroy = 1.2f;
-    private float startTime;
+    public float speed = 20f;
+    public float lifeTime = 2f;
     public int damage = 10;
+    private Vector3 moveDirection;
 
-    void Start()
+    public void SetDirection(Vector3 direction)
     {
-        startTime = Time.time;
+        moveDirection = direction.normalized;
+        transform.forward = moveDirection; // ✅ กำหนดให้ Bullet หันไปตามทิศทางที่ต้องการ
     }
 
-    void Update()
+    private void Start()
     {
-        // เคลื่อนที่กระสุนไปข้างหน้า
-        transform.position -= speed * Time.deltaTime * transform.forward;
-        
-        // ทำลายกระสุนเมื่อถึงเวลา
-        if (Time.time - startTime >= secondDestroy)
-        {
-            Destroy(this.gameObject);
-        }
+        Destroy(gameObject, lifeTime);
     }
+
+    private void Update()
+    {
+        transform.position += transform.forward * speed * Time.deltaTime; // ✅ ใช้ transform.forward แทน moveDirection
+    }
+
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Zombie"))  // ถ้าชนกับซอมบี้
+        if (other.CompareTag("Zombie"))
         {
-            // เรียกฟังก์ชันลดเลือดของซอมบี้
-            other.GetComponent<ZombieController>().TakeDamage(damage);  // ลดเลือดของซอมบี้
-            Destroy(gameObject);  // ทำลายกระสุนหลังจากชน
+            if (NetworkManager.Singleton.IsServer)
+            {
+                other.GetComponent<ZombieController>().TakeDamageServerRpc(damage);
+            }
+            else
+            {
+                SendDamageToServer(other.GetComponent<NetworkObject>().NetworkObjectId, damage);
+            }
+
+            Destroy(gameObject);
+        }
+    }
+
+    [ServerRpc]
+    private void SendDamageToServer(ulong zombieId, int damage)
+    {
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(zombieId, out NetworkObject networkObject))
+        {
+            if (networkObject.TryGetComponent<ZombieController>(out ZombieController zombie))
+            {
+                zombie.TakeDamageServerRpc(damage);
+            }
         }
     }
 }
-
-
-

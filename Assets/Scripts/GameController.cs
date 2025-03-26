@@ -1,73 +1,90 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
-public class GameController : MonoBehaviour
+public class GameController : NetworkBehaviour
 {
-    public GameObject zombiePrefab;  // ซอมบี้ที่ใช้ spawn
-    public Transform spawnAreaCenter;  // จุดกลางของเขต spawn
-    public Vector3 spawnAreaSize;    // ขนาดของเขต spawn (กว้าง, ยาว, สูง)
-    public Text timerText;           // UI Text สำหรับแสดงเวลาที่เหลือ
-    public Text winText;             // UI Text สำหรับแสดงข้อความเมื่อชนะ
-    public Transform player;         // ผู้เล่น
-    public Text waveText;  // UI Text สำหรับแสดงหมายเลขเวฟ
+    public static GameController Instance; // ✅ สร้าง Instance เพื่อให้เรียกใช้ได้ง่าย
+    public Text gameOverText;
+    public GameObject zombiePrefab;
+    public Transform spawnAreaCenter;
+    public Vector3 spawnAreaSize;
+    public Text timerText;
+    public Text winText;
+    public Text waveText;
 
+    [SerializeField] private float spawnInterval = 1f;
+    [SerializeField] private float waveInterval = 5f;
 
-    [SerializeField] private float gameTime = 300f;  // เวลาที่สามารถปรับใน Inspector (เริ่มต้น 5 นาที)
-    [SerializeField] private float spawnInterval = 1f; // เวลาระหว่างการ spawn ซอมบี้แต่ละตัว
-    [SerializeField] private float waveInterval = 5f; // เวลาพักระหว่างเวฟ
-
-    private int waveNumber = 1;      // เริ่มเวฟที่ 1
-    private int zombiesPerWave;     // จำนวนซอมบี้ที่ spawn ในแต่ละเวฟ
+    private int waveNumber = 1;
+    private int zombiesPerWave;
     private bool gameEnded = false;
 
-    // public GameObject restartButton;
     public GameObject menuButton;
     public GameObject quitButton;
     public GameObject restartButton;
 
 
-    private void Start()
-    {
-        winText.gameObject.SetActive(false); // ซ่อนข้อความชนะตอนเริ่มเกม
-        waveText.gameObject.SetActive(true);  // แสดง waveText ตอนเริ่มเกม
-        zombiesPerWave = 5;  // จำนวนซอมบี้ในเวฟแรก
-        StartCoroutine(SpawnZombies()); // เริ่มการ spawn ซอมบี้
 
-        menuButton.gameObject.SetActive(false); 
+    private NetworkVariable<float> gameTime = new NetworkVariable<float>(
+        30f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+    );
+
+      private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+    }
+
+    public override void OnNetworkSpawn()
+    {
+
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text ตอนเริ่มเกม
+        }
+
+        if (IsServer)
+        {
+            gameTime.Value = 30f;
+            gameEnded = false;
+            StartCoroutine(SpawnZombies());
+        }
+
+        winText.gameObject.SetActive(false);
+        waveText.gameObject.SetActive(true);
+        zombiesPerWave = 5;
+
+        menuButton.gameObject.SetActive(false);
         quitButton.gameObject.SetActive(false);
-        restartButton.gameObject.SetActive(false); 
+        restartButton.gameObject.SetActive(false);
     }
 
     private void Update()
     {
-        if (gameEnded) return;
+        if (!IsServer || gameEnded) return;
 
-        // คำนวณเวลาที่เหลือ
-        gameTime -= Time.deltaTime;
-        int minutes = Mathf.FloorToInt(gameTime / 60);
-        int seconds = Mathf.FloorToInt(gameTime % 60);
-        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+        gameTime.Value -= Time.deltaTime;
+        UpdateTimerClientRpc(gameTime.Value);
 
-        // แสดงหมายเลขเวฟ
-        waveText.text = "Wave: " + waveNumber;
-
-        // เมื่อหมดเวลา
-        if (gameTime <= 0)
+        if (gameTime.Value <= 0)
         {
             gameEnded = true;
-            timerText.gameObject.SetActive(false); // ซ่อนตัวจับเวลา
-            winText.gameObject.SetActive(true);    // แสดงข้อความชนะ
-            Time.timeScale = 0; // หยุดเกม
-
-            quitButton.gameObject.SetActive(true); 
-            menuButton.gameObject.SetActive(true); 
-            restartButton.gameObject.SetActive(true); 
+            EndGameClientRpc();
         }
     }
 
+    [ClientRpc]
+    private void UpdateTimerClientRpc(float time)
+    {
+        int minutes = Mathf.FloorToInt(time / 60);
+        int seconds = Mathf.FloorToInt(time % 60);
+        timerText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+    }
 
-    // Coroutine สำหรับการ spawn ซอมบี้
     private IEnumerator SpawnZombies()
     {
         while (!gameEnded)
@@ -75,56 +92,98 @@ public class GameController : MonoBehaviour
             for (int i = 0; i < zombiesPerWave; i++)
             {
                 SpawnZombie();
-                yield return new WaitForSeconds(spawnInterval);  // รอเวลาก่อน spawn ตัวต่อไป
+                yield return new WaitForSeconds(spawnInterval);
             }
 
-            waveNumber++; // เพิ่มจำนวนเวฟ
-            zombiesPerWave += 2;  // เพิ่มจำนวนซอมบี้ในแต่ละเวฟ
+            waveNumber++;
+            zombiesPerWave += 2;
 
-            // แสดงหมายเลขเวฟ
-            waveText.text = "Wave: " + waveNumber;
-
-            yield return new WaitForSeconds(waveInterval);  // รอเวลาก่อนเริ่มเวฟใหม่
+            UpdateWaveClientRpc(waveNumber);
+            yield return new WaitForSeconds(waveInterval);
         }
     }
 
+    [ClientRpc]
+    public void ShowGameOverClientRpc()
+    {
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true); // ✅ แสดง Game Over Text ทุก Client
+        }
+    }
 
-    // ฟังก์ชันสำหรับการ spawn ซอมบี้ภายในเขตที่กำหนด
     private void SpawnZombie()
     {
-        // คำนวณตำแหน่งสุ่มภายในเขต spawn
+        if (!IsServer) return; // ✅ ป้องกัน Client เรียก Spawn
+
         Vector3 spawnPosition = new Vector3(
             Random.Range(spawnAreaCenter.position.x - spawnAreaSize.x / 2, spawnAreaCenter.position.x + spawnAreaSize.x / 2),
-            spawnAreaCenter.position.y,  
+            spawnAreaCenter.position.y,
             Random.Range(spawnAreaCenter.position.z - spawnAreaSize.z / 2, spawnAreaCenter.position.z + spawnAreaSize.z / 2)
         );
 
-        GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, spawnAreaCenter.rotation);
-        
-        // เชื่อมโยง ZombieController กับ GameController
-        ZombieController zombieController = newZombie.GetComponent<ZombieController>();
+        GameObject newZombie = Instantiate(zombiePrefab, spawnPosition, Quaternion.identity);
+        NetworkObject networkObject = newZombie.GetComponent<NetworkObject>();
+
+        if (networkObject != null)
+        {
+            networkObject.Spawn(true); // ✅ Spawn อย่างถูกต้องโดย Server เท่านั้น
+        }
+        else
+        {
+            Debug.LogError("❌ NetworkObject ไม่ถูกต้องใน ZombiePrefab!");
+            return;
+        }
+
+        // ✅ รอ 0.1 วิ ให้แน่ใจว่า Spawn สำเร็จ ก่อน Sync ไปยัง Client
+        StartCoroutine(SyncZombieAfterSpawn(newZombie, spawnPosition));
+    }
+
+    private IEnumerator SyncZombieAfterSpawn(GameObject zombie, Vector3 position)
+    {
+        yield return new WaitForSeconds(0.1f); // ✅ ให้แน่ใจว่า Spawn เสร็จแล้ว
+
+        ZombieController zombieController = zombie.GetComponent<ZombieController>();
         if (zombieController != null)
         {
-            zombieController.SetGameController(this);
-            zombieController.SetPlayer(player);
+            zombieController.SyncZombieClientRpc(position, Quaternion.identity);
+            Debug.Log("✅ Zombie ถูก Sync ไปยัง Client แล้ว!");
+        }
+        else
+        {
+            Debug.LogError("❌ ZombieController ไม่พบใน Prefab!");
         }
     }
 
-    // ฟังก์ชันเพื่อวาดขอบเขต spawn ใน Unity Editor
+
+    [ClientRpc]
+    private void UpdateWaveClientRpc(int wave)
+    {
+        waveText.text = "Wave: " + wave;
+    }
+
+    [ClientRpc]
+    private void EndGameClientRpc()
+    {
+        timerText.gameObject.SetActive(false);
+        winText.gameObject.SetActive(true);
+        Time.timeScale = 0;
+
+        Debug.Log("🔴 [GameController] เวลาในเกมหมด -> Game Over!");
+
+
+        quitButton.gameObject.SetActive(true);
+        menuButton.gameObject.SetActive(true);
+        restartButton.gameObject.SetActive(true);
+    }
+
     private void OnDrawGizmos()
     {
         if (spawnAreaCenter != null)
         {
             Gizmos.color = Color.green;
-            Gizmos.DrawWireCube(spawnAreaCenter.position, spawnAreaSize); 
+            Gizmos.DrawWireCube(spawnAreaCenter.position, spawnAreaSize);
         }
     }
+
 }
-
-
-
-
-
-
-
-

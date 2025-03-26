@@ -1,17 +1,21 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using Unity.Netcode;
 
-public class PlayerAnimationController : MonoBehaviour
+public class PlayerAnimationController : NetworkBehaviour
 {
     [Header("Player Movement")]
     [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float runSpeed = 10f;
     [SerializeField] private float rotationSpeed = 250f;
 
     [Header("Player Stats")]
     [SerializeField] private int health = 100;
-    [SerializeField] private Image healthBar;
+    private bool isDead = false;
+
+    private NetworkVariable<int> currentHealth = new NetworkVariable<int>(
+        100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+    );
 
     [Header("Shooting")]
     [SerializeField] private GameObject bullet;
@@ -19,40 +23,96 @@ public class PlayerAnimationController : MonoBehaviour
     [SerializeField] private Transform firePoint;
     [SerializeField] private float fireRate = 0.3f;
 
-    [Header("UI Elements")]
-    [SerializeField] private Text gameOverText;
-
+    [Header("Audio")]
     public AudioSource gunshot;  
+
     private Animator animator;
     private Rigidbody rb;
-    private int currentHealth;
     private float nextFire = 0.0f;
-    private bool isDead = false;
-
-    public GameObject restartButton;
-    public GameObject menuButton;
-    public GameObject quitButton;
-
+    private Camera playerCamera;
+    private Image healthBar;
+    private Text gameOverText; 
 
     private void Start()
     {
+        if (!IsOwner) return; // ✅ ป้องกัน Client จากการแก้ไข NetworkVariable
+
+        if (IsServer) // ✅ ให้เซิร์ฟเวอร์เป็นคนกำหนดค่า
+        {
+            currentHealth.Value = health; 
+        }
+
+        isDead = false;
+        Debug.Log($"🎮 Player {NetworkObjectId} เริ่มเกม | HP: {currentHealth.Value}");
+    }   
+
+    public override void OnNetworkSpawn()
+    {
+            if (!IsOwner)
+        {
+            Camera playerCamera = GetComponentInChildren<Camera>();
+            if (playerCamera != null)
+            {
+                playerCamera.gameObject.SetActive(false);
+            }
+            enabled = false;
+            return;
+        }
+
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
 
-        currentHealth = health;
-        if (flashMuzzle != null) flashMuzzle.SetActive(false);
-        if (gameOverText != null) gameOverText.gameObject.SetActive(false);
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
-        restartButton.gameObject.SetActive(false); 
-        menuButton.gameObject.SetActive(false); 
-        quitButton.gameObject.SetActive(false);
+        // ✅ ใช้ตัวแปร canvas เพียงครั้งเดียว
+        GameObject canvas = GameObject.FindWithTag("GameCanvas");
+        if (canvas != null)
+        {
+            Transform healthBarTransform = canvas.transform.Find("HealthBar");
+            if (healthBarTransform != null)
+            {
+                healthBar = healthBarTransform.GetComponent<Image>();
+            }
+
+            Transform gameOverTransform = canvas.transform.Find("GameOverText");
+            if (gameOverTransform != null)
+            {
+                gameOverText = gameOverTransform.GetComponent<Text>();
+                gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text สำหรับทุกคน
+            }
+        }
+
+            if (IsServer) // ✅ เรียก ClientRpc จาก Server เท่านั้น
+        {
+            DisableGameOverClientRpc();
+        }
     }
+
+    [ClientRpc]
+    private void DisableGameOverClientRpc()
+    {
+         Debug.Log($"🛠️ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText");
+
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(false);
+            Debug.Log($"✅ [Client {NetworkManager.Singleton.LocalClientId}] ปิด GameOverText สำเร็จ");
+        }
+        else
+        {
+            Debug.LogError($"❌ [Client {NetworkManager.Singleton.LocalClientId}] ไม่พบ gameOverText");
+        }
+    }
+
+
 
     private void Update()
     {
-        if (isDead) return;
+        if (!IsOwner || isDead) return;
 
         HandleMovement();
+        HandleCamera();
         HandleShooting();
     }
 
@@ -60,35 +120,23 @@ public class PlayerAnimationController : MonoBehaviour
     {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
-        float mouseX = Input.GetAxis("Mouse X");
 
-        transform.Rotate(Vector3.up * mouseX * rotationSpeed * Time.deltaTime);
+        Vector3 moveDirection = transform.forward * vertical + transform.right * horizontal;
+        transform.position += moveDirection * moveSpeed * Time.deltaTime;
+    }
 
-        if (horizontal != 0 || vertical != 0)
-        {
-            animator.SetBool("IsWalking", true);
-            float speed = Input.GetKey(KeyCode.LeftShift) ? runSpeed : moveSpeed;
-            animator.SetBool("IsRunning", Input.GetKey(KeyCode.LeftShift));
-            transform.Translate(new Vector3(horizontal, 0, vertical) * speed * Time.deltaTime);
-        }
-        else
-        {
-            animator.SetBool("IsWalking", false);
-            animator.SetBool("IsRunning", false);
-        }
+    private void HandleCamera()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * rotationSpeed * Time.deltaTime;
+        transform.Rotate(0, mouseX, 0);
     }
 
     private void HandleShooting()
     {
         if (Input.GetMouseButtonDown(0) && Time.time > nextFire)
         {
-            animator.SetBool("IsShooting", true);
             nextFire = Time.time + fireRate;
             Fire();
-        }
-        else if (Input.GetMouseButtonUp(0))
-        {
-            animator.SetBool("IsShooting", false);
         }
     }
 
@@ -96,7 +144,8 @@ public class PlayerAnimationController : MonoBehaviour
     {
         if (bullet != null && firePoint != null)
         {
-            Instantiate(bullet, firePoint.position, firePoint.rotation);
+            GameObject newBullet = Instantiate(bullet, firePoint.position, firePoint.rotation);
+            newBullet.GetComponent<Bullet>().SetDirection(firePoint.forward);
         }
 
         if (flashMuzzle != null)
@@ -104,9 +153,9 @@ public class PlayerAnimationController : MonoBehaviour
             flashMuzzle.SetActive(true);
             StartCoroutine(HideMuzzle(0.12f));
         }
-         if (gunshot != null)
+        if (gunshot != null)
         {
-            gunshot.Play(); 
+            gunshot.Play();
         }
     }
 
@@ -118,53 +167,62 @@ public class PlayerAnimationController : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        if (isDead) return;
-
-        currentHealth -= damage;
-        UpdateHealthBar();
-        if (currentHealth <= 0) Die();
-        else animator.SetTrigger("Hit");
+        if (!IsOwner) return;
+        TakeDamageServerRpc(damage);
     }
 
-    private void Die()
+    [ServerRpc(RequireOwnership = false)]
+    public void TakeDamageServerRpc(int damage)
     {
-        isDead = true;
-        animator.SetTrigger("Die");
-        if (gameOverText != null)
+        if (currentHealth.Value <= 0) return;
+
+        currentHealth.Value -= damage;
+        Debug.Log($"💥 Player {NetworkObjectId} ถูกโจมตี! HP เหลือ {currentHealth.Value}");
+
+        UpdateHealthBarClientRpc(currentHealth.Value, NetworkObjectId);
+
+        if (currentHealth.Value <= 0)
         {
-            gameOverText.gameObject.SetActive(true);
-            gameOverText.text = "GAME OVER";
-
-            restartButton.gameObject.SetActive(true); 
-            menuButton.gameObject.SetActive(true); 
-            quitButton.gameObject.SetActive(true);
+            DieClientRpc(NetworkObjectId);
         }
-        Time.timeScale = 0;
     }
 
-    private void UpdateHealthBar()
+    [ClientRpc]
+    private void UpdateHealthBarClientRpc(int health, ulong playerId)
     {
+        if (NetworkObjectId != playerId) return;
+
         if (healthBar != null)
         {
-            healthBar.fillAmount = (float)currentHealth / health;
+            healthBar.fillAmount = (float)health / this.health;
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    [ClientRpc]
+    private void DieClientRpc(ulong playerId)
     {
-        if (other.CompareTag("Zombie"))
+        if (NetworkObjectId != playerId) return;
+
+        isDead = true;
+        animator.SetTrigger("Die");
+
+        Debug.Log($"❌ Player {NetworkObjectId} ตายแล้ว!");
+
+        if (IsOwner)
         {
-            TakeDamage(10);
+            Time.timeScale = 0;
+            if (GameController.Instance != null)
+            {
+                GameController.Instance.ShowGameOverClientRpc(); // ✅ ให้ GameController แสดง Game Over
+            }
         }
+    }
+    [ClientRpc]
+    public void ShowGameOverClientRpc()
+    {
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true); // ✅ แสดงข้อความ Game Over
+        }   
     }
 }
-
-
-
-
-
-
-
-
-
-

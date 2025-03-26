@@ -1,132 +1,158 @@
 using UnityEngine;
-using UnityEngine.AI;
+using Unity.Netcode;
+using System.Collections;
 
-public class ZombieController : MonoBehaviour
+public class ZombieController : NetworkBehaviour
 {
     [Header("Zombie Settings")]
     [SerializeField] private Animator animator;
     [SerializeField] private float attackRange = 1.5f;
+    [SerializeField] private float moveSpeed = 2.5f;
     [SerializeField] private int maxHealth = 100;
-    [SerializeField] private float speed = 2f;
 
-    [Header("References")]
-    [SerializeField] private Transform player;
+    private bool isAttacking;
+    private Transform targetPlayer;
+    private GameController gameController;
 
-    public AudioSource bite;  
-    private GameController gameController; // เพิ่มตัวแปรอ้างอิงไปยัง GameController
-    private int currentHealth;
-    private bool isAttacking = false;
-    private NavMeshAgent agent;
+    private NetworkVariable<int> currentHealth = new NetworkVariable<int>(
+        100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server
+    );
 
-    private void Start()
+    public override void OnNetworkSpawn()
     {
-        currentHealth = maxHealth;
-        animator = animator ?? GetComponent<Animator>();
-        agent = GetComponent<NavMeshAgent>();
-        if (agent != null)
+        if (IsServer)
         {
-            agent.speed = speed;
+            currentHealth.Value = maxHealth;
+            FindClosestPlayer();
+            StartCoroutine(UpdateTarget());
+        }
+    }
+
+    private IEnumerator UpdateTarget()
+    {
+        while (true)
+        {
+            FindClosestPlayer();
+            yield return new WaitForSeconds(2.0f);
         }
     }
 
     private void Update()
     {
-        if (currentHealth <= 0) return;
+        if (!IsServer || currentHealth.Value <= 0 || targetPlayer == null) return;
 
-        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-        FacePlayer();
-
-        if (distanceToPlayer <= attackRange && !isAttacking)
+        float distanceToPlayer = Vector3.Distance(transform.position, targetPlayer.position);
+        
+        if (distanceToPlayer <= attackRange)
         {
-            isAttacking = true;
-            animator.SetTrigger("Attack");
-            
-            if (bite != null)
-        {
-            bite.Play(); 
+            AttackPlayer();
         }
-        }
-        else if (distanceToPlayer > attackRange)
+        else
         {
-            isAttacking = false;
-            animator.SetBool("Walking", true);
             MoveTowardsPlayer();
         }
     }
 
-    private void FacePlayer()
-    {
-        Vector3 direction = (player.position - transform.position).normalized;
-        direction.y = 0;
-        Quaternion lookRotation = Quaternion.LookRotation(direction);
-        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
-    }
-
     private void MoveTowardsPlayer()
     {
-        if (agent != null)
-        {
-            agent.SetDestination(player.position);
-        }
-        else
-        {
-            Vector3 direction = (player.position - transform.position).normalized;
-            transform.position += direction * speed * Time.deltaTime;
-        }
+        Vector3 direction = (targetPlayer.position - transform.position).normalized;
+        transform.position += direction * moveSpeed * Time.deltaTime;
+        transform.LookAt(new Vector3(targetPlayer.position.x, transform.position.y, targetPlayer.position.z));
+        MoveClientRpc(transform.position);
     }
 
-    public void TakeDamage(int damage)
+    [ClientRpc]
+    private void MoveClientRpc(Vector3 newPosition)
     {
-        currentHealth -= damage;
-        if (currentHealth <= 0)
-        {
-            currentHealth = 0;
-            animator.SetTrigger("Die");
-            Destroy(gameObject, 2f);
-        }
+        if (!IsServer) transform.position = newPosition;
     }
 
-    public void AttackPlayer()
+    private void FindClosestPlayer()
     {
-        if (player != null && Vector3.Distance(transform.position, player.position) <= attackRange)
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        if (players.Length > 0)
         {
-            PlayerAnimationController playerController = player.GetComponent<PlayerAnimationController>();
-            if (playerController != null)
+            targetPlayer = players[Random.Range(0, players.Length)].transform;
+        }
+        float minDistance = Mathf.Infinity;
+        Transform closest = null;
+
+        foreach (GameObject player in players)
+        {
+            float distance = Vector3.Distance(transform.position, player.transform.position);
+            if (distance < minDistance)
             {
-                playerController.TakeDamage(10);
+                minDistance = distance;
+                closest = player.transform;
             }
-             
+        }
+
+        if (closest != null)
+        {
+            targetPlayer = closest;
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void AttackPlayer()
     {
-        if (other.CompareTag("Player"))
+        if (targetPlayer == null || isAttacking) return;
+
+        isAttacking = true;
+        animator.SetTrigger("Attack");
+
+        PlayerAnimationController playerController = targetPlayer.GetComponent<PlayerAnimationController>();
+        if (playerController != null && IsServer)
         {
-            AttackPlayer();
+            playerController.TakeDamage(10);
         }
-        if (other.CompareTag("Bullet"))
+
+        StartCoroutine(ResetAttack());
+    }
+
+    private IEnumerator ResetAttack()
+    {   
+        yield return new WaitForSeconds(1.5f);
+        isAttacking = false;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void TakeDamageServerRpc(int damage)
+    {
+        if (currentHealth.Value <= 0) return;
+
+        currentHealth.Value -= damage;
+
+        if (currentHealth.Value <= 0)
         {
-            TakeDamage(20);
-            Destroy(other.gameObject);
+            DieClientRpc();
+            GetComponent<NetworkObject>().Despawn();
         }
     }
 
-    // ✅ เพิ่มฟังก์ชัน SetGameController()
+    [ClientRpc]
+    private void DieClientRpc()
+    {
+        animator.SetTrigger("Die");
+    }
+
     public void SetGameController(GameController controller)
     {
         gameController = controller;
     }
 
-    // ✅ เพิ่มฟังก์ชัน SetPlayer() 
     public void SetPlayer(Transform playerTransform)
     {
-        player = playerTransform;
+        targetPlayer = playerTransform;
+    }
+
+    [ClientRpc]
+    public void SyncZombieClientRpc(Vector3 position, Quaternion rotation)
+    {
+        if (!IsServer)
+        {
+            transform.position = position;
+            transform.rotation = rotation;
+        }
     }
 }
-
-
-
-
-
 

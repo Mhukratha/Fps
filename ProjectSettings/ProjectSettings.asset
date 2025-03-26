@@ -922,11 +922,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: cc0fce88-8066-4bac-85b3-3a3407144675
+  cloudProjectId: a79fed84-b72a-49dd-b859-a58e02c41622
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: Fps-Tps
-  organizationId: unity_f80eeb5ba970293aadaa
+  organizationId: poryosss
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
