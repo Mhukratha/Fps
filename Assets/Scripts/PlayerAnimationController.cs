@@ -35,6 +35,7 @@ public class PlayerAnimationController : NetworkBehaviour
 
     private void Start()
     {
+    
         if (!IsOwner) return; // ✅ ป้องกัน Client จากการแก้ไข NetworkVariable
 
         if (IsServer) // ✅ ให้เซิร์ฟเวอร์เป็นคนกำหนดค่า
@@ -44,8 +45,8 @@ public class PlayerAnimationController : NetworkBehaviour
 
         isDead = false;
         Debug.Log($"🎮 Player {NetworkObjectId} เริ่มเกม | HP: {currentHealth.Value}");
-    }   
-
+    }
+    
     public override void OnNetworkSpawn()
     {
             if (!IsOwner)
@@ -65,7 +66,6 @@ public class PlayerAnimationController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // ✅ ใช้ตัวแปร canvas เพียงครั้งเดียว
         GameObject canvas = GameObject.FindWithTag("GameCanvas");
         if (canvas != null)
         {
@@ -79,11 +79,11 @@ public class PlayerAnimationController : NetworkBehaviour
             if (gameOverTransform != null)
             {
                 gameOverText = gameOverTransform.GetComponent<Text>();
-                gameOverText.gameObject.SetActive(false); // ✅ ปิด Game Over Text สำหรับทุกคน
+                gameOverText.gameObject.SetActive(false);
             }
         }
 
-            if (IsServer) // ✅ เรียก ClientRpc จาก Server เท่านั้น
+            if (IsServer) 
         {
             DisableGameOverClientRpc();
         }
